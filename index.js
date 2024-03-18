@@ -3,6 +3,9 @@ const express = require('express');
 const Sequelize = require('sequelize');
 const app = express(); 
 const PORT = process.env.PORT || 3000;
+const category_data = require("./data/categorys.json");
+const product_data = require("./data/products.json");
+const status_data = require("./data/status.json");
 
 app.use(express.json());  //.use ใช้libraryตัวเอง set ใช้ของอันอื่น
 
@@ -17,6 +20,7 @@ const Categorys = seq.define("categorys",{
         type: Sequelize.INTEGER,
         autoIncrement: true,
         primaryKey:true
+        /*if json not in autoincrement situation change id type to string */
     },
     category_name:{
         type: Sequelize.STRING,
@@ -46,6 +50,23 @@ const Products = seq.define("products",{
     category_id:{
         type: Sequelize.INTEGER,
         allowNull: false
+    },
+    status_id:{
+        type: Sequelize.INTEGER,
+        allowNull: false
+    }
+});
+
+const status = seq.define("status",{
+    status_id:{
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey:true
+        
+    },
+    status_name:{
+        type: Sequelize.STRING,
+        allowNull: false
     }
 });
 
@@ -55,9 +76,33 @@ Products.belongsTo(Categorys,{ //m-1
 Categorys.hasMany(Products,{ //1-m
     foreignKey:"category_id" 
 })
+status.hasMany(Products,{
+    foreignKey:"status_id"
+})
 
 seq.sync();
 
+app.get("/insertcatagory", (req,res) => {
+    category_data.map(function (row) {
+        //console.log(row);
+        Categorys.create(row);
+    })
+    res.end();
+})
+
+app.get("/insertproduct", (req,res) => {
+    product_data.map(function (row) {
+        Products.create(row);
+    })
+    res.end();
+})
+
+app.get("/insertstatus", (req,res) => {
+    status_data.map(function (row){
+        status.create(row);
+    })
+    res.end();
+})
 
 app.get("/",(req,res)=>{
     res.status(200).json("หิวข้าว");
@@ -165,7 +210,14 @@ app.get("/products",(req,res)=>{
        include:[{
         model: Categorys,
         attributes:["category_name"]
-       }]
+
+       },
+       {
+        model : status,
+        attributes : ["status_name"]
+       }
+    ]
+
     }) 
     .then((row)=>{  
         res.status(200).json(row)
@@ -184,7 +236,12 @@ app.get("/products/:product_id",(req,res)=>{
         include:[{
             model: Categorys,
             attributes:["category_name"]
-           }]
+           },
+           {
+            model: status,
+            attributes : ["status_name"]
+           }
+        ]
         
     })
     .then((row)=>{  
@@ -239,6 +296,101 @@ app.delete("/products",(req,res)=>{
 
 });
 
+app.get("/status",(req,res)=>{ //"/categorys"ชื่อ table
+    status.findAll() //Categorysชื่อตัวแปร
+    .then((row)=>{  //rowข้อมูลที่ได้กลับมา
+        res.status(200).json(row)
+    })
+    .catch((err)=>{
+        res.status(200).json(err)
+    })
+});
+
+app.get("/status/:status_id",(req,res)=>{
+    // Categorys.findByPk(req.params.category_id)
+    status.findOne({
+        where:{
+            status_id:req.params.status_id,
+        }  
+    })
+    .then((row)=>{  //rowข้อมูลที่ได้กลับมา
+        res.status(200).json(row)
+    })
+    .catch((err)=>{
+        res.status(200).json(err)
+    })
+});
+
+// app.get("/categorys/:category_id",(req,res)=>{
+//     Categorys.findByPk(req.params.category_id)
+//     .then((row)=>{  //rowข้อมูลที่ได้กลับมา
+//         res.status(200).json(row)
+//     })
+//     .catch((err)=>{
+//         res.status(200).json(err)
+//     })
+// })
+
+app.post("/status",(req,res)=>{
+    status.create(req.body)
+    .then((row)=>{  //rowข้อมูลที่ได้กลับมา
+        res.status(200).json({
+            status: true,
+            row: row
+        })
+    })
+    .catch((err)=>{
+        res.status(200).json(err)
+    })
+
+});
+ ///categorys/:category_name ส่งแบบ req.params.category_name
+
+app.put("/status/:status_id",(req,res)=>{
+    status.findByPk(req.params.status_id)
+    .then((status)=>{  
+        status.update(req.body)
+        .then((row)=>{  
+            res.status(200).json(row)
+        })
+        .catch((err)=>{
+            res.status(200).json(err)
+        })
+    })
+    .catch((err)=>{
+        res.status(200).json(err)
+    })
+});
+
+app.delete("/status/:status_id",(req,res)=>{
+     status.findByPk(req.params.status_id)
+     .then((status)=>{  
+         status.destroy()
+         .then(() => {
+           res.send({});
+         })
+         .catch((err) => {
+           res.status(500).send(err);
+         });
+     })
+     .catch((err)=>{
+        res.status(200).json(err)
+     })
+    /*status.findByPk(req.query.status_id)
+    .then((status)=>{
+        status.destroy()
+        .then(() => {
+          res.send({});
+        })
+        .catch((err) => {
+          res.status(500).send(err);
+        });
+    })
+    .catch((err)=>{
+        res.status(200).json(err)
+    })*/
+
+});
 
 
 app.listen(PORT,()=>{
